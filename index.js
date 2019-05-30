@@ -8,7 +8,7 @@ const querystring = require('querystring');
 const request = require('request-promise');
 
 const apiKey = process.env.SHOPIFY_API_KEY;
-const apiSecret = process.env.SHOPIFY_API_SECRET;
+const apiSecret = process.env.SHOPIFY_API_SECRET_KEY;
 const forwardingAddress = process.env.FORWARDING_ADDRESS;
 const scopes = 'write_script_tags';
 

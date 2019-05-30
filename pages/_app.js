@@ -6,29 +6,35 @@ import { AppProvider } from '@shopify/polaris';
 import '@shopify/polaris/styles.css';
 
 import Loading from './loading';
+import Error from './error';
 
 class MyApp extends App {
 
     constructor(props) {
+
         super(props);
 
         const shopOrigin = Cookies.get('shopOrigin');
         const locale = Cookies.get('locale');
         const accessToken = Cookies.get('accessToken');
-        const initialized = Boolean(shopOrigin && locale && accessToken);
+        const configured = Boolean(shopOrigin && locale && accessToken);
+
         this.state = {
-            initialized: initialized,
-            shopOrigin: initialized && shopOrigin,
-            locale: initialized && locale.substr(0, 2),
-            accessToken: initialized && accessToken
+            loaded: false,
+            configured: configured,
+            shopOrigin: shopOrigin,
+            locale: locale && locale.substr(0, 2),
+            accessToken: accessToken
         };
     }
 
     async componentDidMount() {
-        if (this.state.initialized) {
+
+        if (this.state.configured) {
             const response = await fetch('/api/shop');
             const responseJson = await response.json();
             this.setState((state) => {
+                state.loaded = true;
                 state.shop = responseJson.shop;
                 return state
             })
@@ -43,21 +49,27 @@ class MyApp extends App {
                     <title>Hello World App</title>
                     <meta charSet="utf-8" />
                 </Head>
-                {this.state.shop ? (
-                    <AppProvider
-                        shopOrigin={this.state.shopOrigin}
-                        apiKey={API_KEY}
-                        forceRedirect
-                    >
-                        {this.state.shop ? (
-                            <Component {...{...pageProps, locale: this.state.locale, shop: this.state.shop}} />
-                        ) : (
-                            <Loading />
-                        )}
-                    </AppProvider>
-                ) : (
-                    <p style={{color: 'red'}}>Application not initialized properly. Go to <b>/shopify?shop=&lt;your_shop&gt;</b> to authenticate this application with your shop.</p>
-                )}
+
+                <AppProvider
+                >
+                    {process.browser ? (
+                        <p>
+                            {this.state.configured ? (
+                                <p>
+                                    {this.state.loaded ? (
+                                        <Component {...{...pageProps, locale: this.state.locale, shop: this.state.shop}} />
+                                    ) : (
+                                        <Loading />
+                                    )}
+                                </p>
+                            ) : (
+                                <Error msg='Application not configured properly. Go to /shopify?shop=&lt;your_shop&gt; to authenticate this application with your shop.' />
+                            )}
+                        </p>
+                    ) : (
+                        <Loading />
+                    )}
+                </AppProvider>
             </React.Fragment>
         );
     }
