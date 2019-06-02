@@ -1,4 +1,6 @@
 .env
 .git
 .next
+application.pid
 node_modules
+logs

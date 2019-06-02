@@ -1,0 +1,221 @@
+#!/bin/bash
+
+# Prints the help message.
+usage()
+{
+cat << EOF
+Usage: $0 {start|stop|restart|status}
+
+Options:
+        start - Starts the app. Exit code:
+                0 - process successfully started
+                1 - process was already running or the startup failed
+
+        stop - Stops the running app, if any. Exit code:
+                0 - the process shutdown gracefully
+                1 - SIGKILL was used because the process didn't shutdown in time
+                2 - an error occurred and the process didn't stop even after SIGKILL
+
+        restart - stop and then start. Exit code: whatever "start" returned
+
+        status - Prints the current status of the daemon. Exit code:
+                0 - running
+                1 - stopped
+EOF
+}
+
+# The app directory
+SCRIPT_DIR=`cd $(dirname $0) && pwd`
+BASE_DIR=$SCRIPT_DIR/..
+cd $BASE_DIR
+
+# The command to run
+CMD=$1
+
+RUNNABLE='node index.js'
+
+# The pid file contains the id of the running process
+PID_FILE=$BASE_DIR/application.pid
+
+# The number of seconds to wait for the process to start before verifying it
+# If the process is not fully starting after this period the operation is considered failed
+START_TIMEOUT=5
+# The number of seconds to wait for the process to close until we send a SIGKILL
+STOP_TIMEOUT=5
+
+# Check if the daemon is running
+#
+# Return code:
+#       0 - running
+#       1 - stopped
+d_status()
+{
+         # First look for the PID file
+        if [ ! -r $PID_FILE ] ; then
+                printf "App is stopped\n"
+                return 1
+        fi
+
+        # ... then check if there still is a process with this PID
+        local pid=`cat $PID_FILE`
+
+        if ! kill -0 $pid &> /dev/null ; then
+                echo "PID file found. No process running with PID $pid"
+                printf "\nApp is stopped\n"
+                return 1
+        fi
+
+        # The 'timeout' command is GNU and therefore not available on Mac
+        local timeout=
+        if command -v timeout &> /dev/null ; then
+                timeout="timeout -k 1 1"
+        fi
+
+        printf "App running with PID $pid\n"
+        return 0
+}
+
+# Wait for the given command to return 0 for a given amount of time
+#
+# Params:
+#       command
+#       timeout
+#       command_description - optional
+#
+# Return code: the output of <command>
+wait_for_command()
+{
+        local CMD=$1
+        local timeout=$2
+        local desc=$3
+
+        printf "$desc "
+
+        # Execute $CMD every second until it returns 0 or the timeout expires
+        local seconds=1
+        while eval "! $CMD" && [ "$seconds" -le "$timeout" ] ; do
+                sleep 1
+                printf "."
+
+                seconds=`expr $seconds + 1`
+        done
+
+        printf "\n"
+
+        # Return the exit code of <command>
+        eval "$CMD"
+}
+
+# Starts the daemon.
+#
+# Return code:
+#       0 - process successfully started
+#       1 - process was already running or the startup failed
+d_start()
+{
+         # Check for any existing process first
+        d_status &> /dev/null
+        status_code=$?
+
+        if [ $status_code -ne 1 ] ; then
+                echo "App is already running. Abort start procedure!"
+                return 1
+        fi
+
+        printf "Starting app...\n\n"
+
+        # Start daemon from $BASE_DIR
+        (
+                mkdir -p logs
+                NODE_ENV=production nohup $RUNNABLE > logs/nohup.out 2> logs/nohup.err < /dev/null &
+                echo $! > $PID_FILE
+        )
+        pid=`cat $PID_FILE`
+
+        # Wait for the daemon to start
+        wait_for_command "d_status &> /dev/null" $START_TIMEOUT "Waiting for app to start"
+        status_code=$?
+
+        echo
+
+        if [ $status_code -eq 0 ] ; then
+                printf "App started with PID $pid\nPID file: $PID_FILE\n"
+        else
+                printf "ERROR\tApp didn't start successfully after $START_TIMEOUT seconds\n"
+        fi
+
+        return $status_code
+}
+
+# Stops the daemon.
+#
+# Return code:
+#       0 - the process shutdown gracefully
+#       1 - SIGKILL was used because the process didn't shutdown in time
+#       2 - an error occurred and the process didn't stop even after SIGKILL
+d_stop()
+{
+        # First check the PID file
+        if [ ! -r $PID_FILE ] ; then
+                echo "No pid file found. Nothing to stop!"
+
+                return 0
+        fi
+
+        printf "Stopping app...\n\n"
+
+        # ... then send SIGTERM
+        local pid=`cat $PID_FILE`
+
+        echo "Sending SIGTERM to pid $pid"
+        kill -s TERM $pid
+
+        # Wait for STOP_TIMEOUT seconds for the process to finish
+        if wait_for_command "! kill -0 $pid &> /dev/null" $STOP_TIMEOUT "Waiting for app to shutdown" ; then
+                # Gracefull shutdown
+                rm -f $PID_FILE
+                printf "\nApp stopped\n"
+                return 0
+        fi
+
+        # The process didn't shutdown. Send SIGKILL
+        printf "\nApp didn't shutdown gracefully. Sending SIGKILL.\n"
+
+        kill -9 $pid
+
+        # In some situations not even SIGKILL can stop the process
+        if wait_for_command "! kill -0 $pid &> /dev/null" $STOP_TIMEOUT "Waiting for app to shutdown" ; then
+                # Process stopped after SIGKILL
+                rm -f $PID_FILE
+                printf "\nApp stopped with SIGKILL\n"
+
+                return 1
+        fi
+
+        printf "\nERROR\tApp didn't stop even after SIGKILL\n"
+
+        return 2
+}
+
+case "$CMD" in
+        start)
+                d_start
+                ;;
+        stop)
+                d_stop
+                ;;
+        restart)
+                d_stop
+
+                echo
+                sleep 1
+
+                d_start
+                ;;
+        status)
+                d_status
+                ;;
+        *)
+                usage
+                ;;
+esac
