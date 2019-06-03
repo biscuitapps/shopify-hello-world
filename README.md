@@ -4,8 +4,8 @@ Shopify expressjs hello world application with the following functionality so fa
 * Authorizes in online mode, that is, information about current admin user is available
 * Performs query against Shopify RESTful Admin API
 * Installs JS script that gets executed in the frontend store on load event
-* Start, stop and restart bash-based lifecycle events making the app ready to use in production (WIP)
-* AWS CodePipeline hooks working with bash-based lifecycle events (WIP)
+* Start, stop and restart bash-based lifecycle events making the app ready to use in production
+* AWS CodePipeline hooks working with bash-based lifecycle events
 
 ## Technology Stack
 * Web framework: Express (https://expressjs.com)
@@ -21,4 +21,3 @@ Shopify expressjs hello world application with the following functionality so fa
 * Start in development mode: TBD
 * Build: TBD
 * Start in production mode: TBD
-
