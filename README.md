@@ -18,6 +18,6 @@ Shopify expressjs hello world application with the following functionality so fa
 3. Execute ```npm install```
 
 ## Usage
-* Start in development mode: TBD
-* Build: TBD
-* Start in production mode: TBD
+* Start in development mode: ```npm run dev```
+* Build: ```npm run build```
+* Start in production mode: ```npm run start``` or ```bin/service start```
