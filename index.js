@@ -146,7 +146,8 @@ app.prepare().then(() => {
         return handle(req, res)
     })
 
-    server.listen(3000, () => {
-      console.log('Hello World App listening on port 3000!');
+    const port = parseInt(process.env.PORT, 10) || 3000;
+    server.listen(port, () => {
+      console.log(`Hello World App listening on port ${port}!`);
     });
 });
