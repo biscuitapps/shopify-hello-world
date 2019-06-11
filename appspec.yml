@@ -1,0 +1,22 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ec2-user/apps/shopify-hello-world
+hooks:
+  ApplicationStop:
+    - location: bin/aws_application_stop.sh
+      runas: ec2-user
+      timeout: 60
+  BeforeInstall:
+    - location: bin/aws_before_install.sh
+      runas: ec2-user
+      timeout: 60
+  AfterInstall:
+    - location: bin/aws_after_install.sh
+      runas: ec2-user
+      timeout: 300
+  ApplicationStart:
+    - location: bin/aws_application_start.sh
+      runas: ec2-user
+      timeout: 60
