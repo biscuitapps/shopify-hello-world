@@ -1,26 +1,26 @@
 const dotenv = require('dotenv').config();
-const express = require('express');
-const server = express();
-const next = require('next');
+const express = require('express')();
 
 const dev = process.env.NODE_ENV !== 'production'
-const app = next({ dev, dir: './public' })
-const handle = app.getRequestHandler();
+
+const next = require('next');
+const nextApp = next({ dev, dir: './public' })
+const nextHandle = nextApp.getRequestHandler();
 
 const shopifyOauth = require('./routes/oauth.js');
 const shopifyProxy = require('./routes/proxy.js');
 
-app.prepare().then(() => {
+nextApp.prepare().then(() => {
 
-    server.use(shopifyOauth);
-    server.use(shopifyProxy);
+    express.use(shopifyOauth);
+    express.use(shopifyProxy);
 
-    server.get('*', (req, res) => {
-        return handle(req, res)
+    express.get('*', (req, res) => {
+        return nextHandle(req, res)
     })
 
     const port = parseInt(process.env.PORT, 10) || 3000;
-    server.listen(port, () => {
+    express.listen(port, () => {
       console.log(`Hello World App listening on port ${port}!`);
     });
 });
