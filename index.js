@@ -4,12 +4,8 @@ const server = express();
 const cookie = require('cookie');
 const request = require('request-promise');
 
-const apiKey = process.env.SHOPIFY_API_KEY;
-const apiSecret = process.env.SHOPIFY_API_SECRET_KEY;
-const forwardingAddress = process.env.FORWARDING_ADDRESS;
-const scopes = 'write_script_tags';
+const shopifyOauth = require('./routes/oauth.js');
 
-const shopifyOauth = require('shopify-oauth');
 const next = require('next')
 
 const dev = process.env.NODE_ENV !== 'production'
@@ -18,26 +14,7 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
 
-    server.use(shopifyOauth({
-        forwardingAddress, apiKey, apiSecret, scopes
-    }, (shop, accessTokenResponse) => {
-
-        const accessToken = accessTokenResponse.access_token;
-
-        request.post(`https://${shop}/admin/script_tags.json`, {
-            method: 'post',
-            body: JSON.stringify({
-                "script_tag": {
-                    "event": "onload",
-                    "src": process.env.FRONTSTORE_JS
-                }
-            }),
-            headers: {
-                'X-Shopify-Access-Token': accessToken,
-                'content-type': 'application/json; charset=utf-8'
-            },
-        });
-    }));
+    server.use(shopifyOauth);
 
     server.get('/api/:object', (req, res) => {
 
