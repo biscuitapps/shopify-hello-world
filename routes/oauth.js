@@ -1,4 +1,5 @@
 const shopifyOauth = require('shopify-oauth');
+const request = require('request-promise');
 
 const apiKey = process.env.SHOPIFY_API_KEY;
 const apiSecret = process.env.SHOPIFY_API_SECRET_KEY;
